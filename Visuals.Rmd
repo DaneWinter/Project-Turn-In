@@ -1,0 +1,418 @@
+---
+title: "Visuals"
+author: "gif or gif"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+#DATAFEST!!!
+```{r}
+#Import data
+library(tidyverse)
+page_views <- read.csv("~/Desktop/DataFest/page_views.csv")
+#View(page_views)
+
+responses <- read.csv("~/Desktop/DataFest/responses.csv", comment.char="#")#View(responses_sample)
+#View(responses)
+
+media_views <- read.csv("~/Desktop/DataFest/media_views.csv")
+#View(media_views)
+
+items <- read.csv("~/Desktop/DataFest/items.csv")
+#View(items)
+
+checkpoints_pulse <- read.csv("~/Desktop/DataFest/checkpoints_pulse.csv")
+#View(checkpoints_pulse)
+
+checkpoints_eoc <- read.csv("~/Desktop/DataFest/checkpoints_eoc.csv")
+#View(checkpoints_eoc)
+```
+
+```{r}
+#Creating success variable by .6 > is pass and below is fail
+checkpoints_eoc$success <- ifelse(checkpoints_eoc$EOC > .6, "P", "F")
+
+#Histogram of EOC
+#install.packages("wesanderson")
+library(wesanderson)
+
+#colors for plot
+desired_color <- wes_palette("Darjeeling1")[1]  
+desired_color2 <- wes_palette("Darjeeling1")[5]  
+
+
+ggplot(data = checkpoints_eoc, aes(x = EOC, fill = success)) +
+  geom_histogram(color = "black", binwidth = 0.1, breaks = c(0, 0.05, 0.1, .15, 0.2, .25, 0.3, .35, 0.4, .45, 0.5, .55, 0.6, .65, 0.7, .75, 0.8, .85, 0.9, .95, 1)) +
+  labs(x = "EOC",
+       y = "Count",
+       title = "Histogram of EOC by Pass/Fail",
+       fill = "Pass/Fail") +
+  scale_fill_manual(values = c(desired_color, desired_color2)) +  
+  theme_minimal() +
+  theme(legend.position = "top", plot.title = element_text(hjust = 0.5)) 
+```
+
+```{r}
+#Boxplot of chapters by EOC
+ggplot(data = checkpoints_eoc, aes(x = as.factor(chapter_number), y = EOC)) +
+  geom_boxplot(outliers = FALSE, aes(color = as.factor(chapter_number)), show.legend = FALSE) +  
+  labs(title = "Boxplot of Chapters by EOC",
+       x = "Chapter Number") +
+  scale_color_manual(values = wes_palette("Darjeeling1", n = 16, type = "continuous")) +  
+  theme_minimal() +
+  geom_hline(yintercept = 0.6, linetype = "dashed", color = "black", size = 1.5) +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+#Boxplot and violin plot of books by EOC
+ggplot(checkpoints_eoc, aes(x = book, y = EOC)) +
+  geom_violin(fill = "lightblue", color = "blue", alpha = 0.5) +
+  geom_boxplot() +
+  labs(x = "Books",
+       title = "Books by EOC") +
+  scale_x_discrete(labels = c("College (ABC)", "Advanced College (ABCD)", "High School")) +
+  theme(plot.title = element_text(hjust = 0.5)) 
+```
+
+```{r}
+#Boxplot of created combo variable with a fill of construct
+check <- checkpoints_pulse %>% mutate(combo = paste(construct, chapter_number, sep = " "))
+
+ggplot(check, aes(x=combo,y=response, fill = construct)) + 
+  geom_boxplot(outliers = F) +
+  theme_minimal() +
+  labs(title = "Boxplot of Pulse Responses by Construct and Chapter") +
+  scale_fill_manual(values = wes_palette(name="Darjeeling1",n=4,type = "discrete")) +
+  theme(legend.position = "none",axis.text.x=element_text(angle=45),plot.title = element_text(hjust = 0.5))
+```
+
+#code for all the pulse graphs
+```{r}
+pulse <- checkpoints_pulse %>% 
+  mutate(cost = ifelse(construct == "Cost", response, NA)) %>% 
+  mutate(expectancy = ifelse(construct == "Expectancy", response, NA)) %>% 
+  mutate(intrinsic = ifelse(construct == "Intrinsic Value", response, NA)) %>% 
+  mutate(utility = ifelse(construct == "Utility Value", response, NA)) %>%
+  filter(response != "")
+
+pulse <- pulse %>% group_by(student_id, chapter_number) %>%
+  summarize(cost = mean(cost, na.rm = TRUE), 
+            expectancy = mean(expectancy, na.rm = TRUE), 
+            intrinsic = mean(intrinsic, na.rm = TRUE), 
+            utility = mean(utility, na.rm = TRUE)) %>%
+  filter(cost != 3.5,expectancy != 3.5)
+
+full_pulse <- full_join(total_table,pulse, by = c("student_id","chapter_number"))
+```
+
+```{r}
+ggplot(full_pulse, aes(x = cost, y = EOC)) +
+  theme_minimal() +
+  geom_violin(aes(color = as.factor(cost))) +
+  geom_boxplot(aes(fill = as.factor(cost)), width = 0.4, outliers = F) +
+  scale_fill_manual(values = wes_palette(name = "Darjeeling1",n=7, type = "continuous")) +
+  scale_color_manual(values = wes_palette(name = "Darjeeling1",n=7, type = "continuous")) +
+  theme(legend.position = "none")
+
+eoc_cost <- lm(EOC ~ cost, full_pulse)
+summary(eoc_cost)
+
+ggplot(full_pulse, aes(x = expectancy, y = EOC)) +
+  theme_minimal() +
+  geom_violin(aes(color = as.factor(expectancy))) +
+  geom_boxplot(aes(fill = as.factor(expectancy)), width = 0.4, outliers = F) +
+  scale_fill_manual(values = wes_palette(name = "Darjeeling1",n=7, type = "continuous")) +
+  scale_color_manual(values = wes_palette(name = "Darjeeling1",n=7, type = "continuous")) +
+  theme(legend.position = "none")
+
+eoc_exp <- lm(EOC ~ expectancy, full_pulse)
+summary(eoc_exp)
+
+ggplot(full_pulse, aes(x = intrinsic, y = EOC)) +
+  theme_minimal() +
+  geom_violin(aes(color = as.factor(intrinsic))) +
+  geom_boxplot(aes(fill = as.factor(intrinsic)), width = 0.4, outliers = F) +
+  scale_fill_manual(values = wes_palette(name = "Darjeeling1",n=7, type = "continuous")) +
+  scale_color_manual(values = wes_palette(name = "Darjeeling1",n=7, type = "continuous")) +
+  theme(legend.position = "none")
+
+eoc_int <- lm(EOC ~ intrinsic, full_pulse)
+summary(eoc_int)
+
+ggplot(full_pulse, aes(x = utility, y = EOC)) +
+  theme_minimal() +
+  geom_violin(aes(color = as.factor(utility))) +
+  geom_boxplot(aes(fill = as.factor(utility)), width = 0.4, outliers = F) +
+  scale_fill_manual(values = wes_palette(name = "Darjeeling1",n=7, type = "continuous")) +
+  scale_color_manual(values = wes_palette(name = "Darjeeling1",n=7, type = "continuous")) +
+  theme(legend.position = "none")
+
+eoc_util <- lm(EOC ~ utility, full_pulse)
+summary(eoc_util)
+```
+
+```{r}
+ggplot(full_pulse, aes(y = (avg_attempt)^-5, x = cost)) +
+  theme_minimal() +
+  geom_violin(aes(color = as.factor(cost))) +
+  geom_boxplot(aes(fill = as.factor(cost)), width = 0.4, outliers = F) +
+  scale_fill_manual(values = wes_palette(name = "Darjeeling1",n=7, type = "continuous")) +
+  scale_color_manual(values = wes_palette(name = "Darjeeling1",n=7, type = "continuous")) +
+  theme(legend.position = "none")
+
+att_cost <- lm((avg_attempt)^-5 ~ cost, full_pulse)
+summary(att_cost)
+
+ggplot(full_pulse, aes(y = (avg_attempt)^-5, x = expectancy)) +
+  theme_minimal() +
+  geom_violin(aes(color = as.factor(expectancy))) +
+  geom_boxplot(aes(fill = as.factor(expectancy)), width = 0.4, outliers = F) +
+  scale_fill_manual(values = wes_palette(name = "Darjeeling1",n=7, type = "continuous")) +
+  scale_color_manual(values = wes_palette(name = "Darjeeling1",n=7, type = "continuous")) +
+  theme(legend.position = "none")
+
+att_exp <- lm((avg_attempt)^-5 ~ expectancy, full_pulse)
+summary(att_exp)
+
+ggplot(full_pulse, aes(y = (avg_attempt)^-5, x = intrinsic)) +
+  theme_minimal() +
+  geom_violin(aes(color = as.factor(intrinsic))) +
+  geom_boxplot(aes(fill = as.factor(intrinsic)), width = 0.4, outliers = F) +
+  scale_fill_manual(values = wes_palette(name = "Darjeeling1",n=7, type = "continuous")) +
+  scale_color_manual(values = wes_palette(name = "Darjeeling1",n=7, type = "continuous")) +
+  theme(legend.position = "none")
+
+att_int <- lm((avg_attempt)^-5 ~ intrinsic, full_pulse)
+summary(att_int)
+
+ggplot(full_pulse, aes(y = (avg_attempt)^-5, x = utility)) +
+  theme_minimal() +
+  geom_violin(aes(color = as.factor(utility))) +
+  geom_boxplot(aes(fill = as.factor(utility)), width = 0.4, outliers = F) +
+  scale_fill_manual(values = wes_palette(name = "Darjeeling1",n=7, type = "continuous")) +
+  scale_color_manual(values = wes_palette(name = "Darjeeling1",n=7, type = "continuous")) +
+  theme(legend.position = "none")
+
+att_util <- lm((avg_attempt)^-5 ~ utility, full_pulse)
+summary(att_util)
+```
+
+```{r}
+full_pulse <- full_pulse %>%
+  filter(cost != 3.5)
+ggplot(full_pulse, aes(y = log(engaged_sum), x = cost)) +
+  theme_minimal() +
+  geom_violin(aes(color = as.factor(cost))) +
+  geom_boxplot(aes(fill = as.factor(cost)), width = .4, outliers = F) +
+  scale_fill_manual(values = wes_palette(name = "Darjeeling1", n = 7, type = "continuous")) +
+  scale_color_manual(values = wes_palette(name = "Darjeeling1", n = 7, type = "continuous"))
+
+eng_cost <- lm(engaged_sum ~ cost, full_pulse)
+summary(eng_cost)
+
+ggplot(full_pulse, aes(y = log(engaged_sum), x = expectancy)) +
+  theme_minimal() +
+  geom_violin(aes(color = as.factor(expectancy))) +
+  geom_boxplot(aes(fill = as.factor(expectancy)), width = .4, outliers = F) +
+  scale_fill_manual(values = wes_palette(name = "Darjeeling1", n = 7, type = "continuous")) +
+  scale_color_manual(values = wes_palette(name = "Darjeeling1", n = 7, type = "continuous"))
+
+eng_exp <- lm(engaged_sum ~ expectancy, full_pulse)
+summary(eng_exp)
+
+ggplot(full_pulse, aes(y = log(engaged_sum), x = intrinsic)) +
+  theme_minimal() +
+  geom_violin(aes(color = as.factor(intrinsic))) +
+  geom_boxplot(aes(fill = as.factor(intrinsic)), width = .4, outliers = F) +
+  scale_fill_manual(values = wes_palette(name = "Darjeeling1", n = 7, type = "continuous")) +
+  scale_color_manual(values = wes_palette(name = "Darjeeling1", n = 7, type = "continuous"))
+
+eng_int <- lm(engaged_sum ~ intrinsic, full_pulse)
+summary(eng_int)
+
+ggplot(full_pulse, aes(y = log(engaged_sum), x = utility)) +
+  theme_minimal() +
+  geom_violin(aes(color = as.factor(utility))) +
+  geom_boxplot(aes(fill = as.factor(utility)), width = .4, outliers = F) +
+  scale_fill_manual(values = wes_palette(name = "Darjeeling1", n = 7, type = "continuous")) +
+  scale_color_manual(values = wes_palette(name = "Darjeeling1", n = 7, type = "continuous"))
+
+eng_util <- lm(engaged_sum ~ utility, full_pulse)
+summary(eng_util)
+```
+
+# Renaming class_id to easier names to read on graph
+```{r}
+checkpoints_pulse <- checkpoints_pulse %>%  mutate(class_id = case_when(class_id == "0089dedf-6316-4c32-a38c-d48dfafed882" ~ "C-01",
+                              class_id == "074123e7-cd90-4500-86fe-286aaa733bf5" ~ "C-02",
+                              class_id == "0d546479-6f77-4477-9c7e-365cd36c97eb" ~ "C-03",
+                              class_id == "1020418a-3eeb-4251-88f7-150c8fe00a56" ~ "C-04",
+                              class_id == "103f5ce8-9e95-4916-815e-9f821d274a59" ~ "C-05",
+                              class_id == "1cca9f91-5c4a-4e1a-8e0e-293b070dfd6f" ~ "C-06",
+                              class_id == "20bd524c-bb2d-4b74-a419-929475b91d94" ~ "C-07",
+                              class_id == "2294d558-6f5d-41c5-8d28-7b5280970f95" ~ "C-08",
+                              class_id == "3631cec9-51d3-4237-906f-a142a715be51" ~ "C-09",
+                              class_id == "40e49bfa-f6cb-42fa-a3a4-b23592b799ec" ~ "C-10",
+                              class_id == "4a3b5b2c-ef0f-4121-96f4-fd8a42764836" ~ "C-11",
+                              class_id == "51711479-441b-4c02-aef7-517aca63a53f" ~ "C-12",
+                              class_id == "52619962-72f6-4716-9c64-1c06fe10f739" ~ "C-13",
+                              class_id == "552ede8f-6b54-426d-8d29-abdc43a668cb" ~ "C-14",
+                              class_id == "5bd961c4-659c-40a7-a685-6735189f2b65" ~ "C-15",
+                              class_id == "60e05fa5-c986-4973-9833-16238720b727" ~ "C-16",
+                              class_id == "65246c1e-a176-4760-acb5-a320a9b7b2fe" ~ "C-17",
+                              class_id == "686478e7-82ac-4e6c-a3ec-2da0076ef868" ~ "C-18",
+                              class_id == "79662249-02f6-48d8-aa99-1e1c0aeea77d" ~ "C-19",
+                              class_id == "7a987176-7e55-45b5-a715-7f56c59d5f49" ~ "C-20",
+                              class_id == "822d72d9-0c18-47a0-99fc-7223b4fd22f5" ~ "C-21",
+                              class_id == "8589cd83-192c-44c8-b649-cd848e519530" ~ "C-22",
+                              class_id == "94da41a4-f9f8-4225-bf41-42db737850b9" ~ "C-23",
+                              class_id == "97c61e74-5a20-4cf5-bf67-8f8db750d0e7" ~ "C-24",
+                              class_id == "98119d92-8cc6-416a-972c-630351726223" ~ "C-25",
+                              class_id == "9bdf8bfc-9998-4fd8-85d2-70c91cf94891" ~ "C-26",
+                              class_id == "9fad0c9e-9d3d-4eed-ada6-3959bd6d712c" ~ "C-27",
+                              class_id == "afcb6b4e-a0c0-46ce-b38c-c96329c91471" ~ "C-28",
+                              class_id == "b1421b49-4026-4c61-9786-d4ef110c8db3" ~ "C-29",
+                              class_id == "b16b895d-ca1d-4330-a36d-c43fb33436e5" ~ "C-30",
+                              class_id == "bc650f4f-11f0-439a-a90a-47726724c811" ~ "C-31",
+                              class_id == "bcae937d-c95f-436c-ac0f-d4a5e995de19" ~ "C-32",
+                              class_id == "c09145c1-d635-41ae-b881-17ab46895fe4" ~ "C-33",
+                              class_id == "c1168ee3-7ac8-4fdc-af0e-e375ad0629fe" ~ "C-34",
+                              class_id == "c7008a64-b43c-4eb4-bebf-07b08b9894ad" ~ "C-35",
+                              class_id == "cc1ffb2e-5555-4109-8ad8-2d49cb54ad10" ~ "C-36",
+                              class_id == "d0b4f5e2-6d8f-4828-91cd-3f4714b821b0" ~ "C-37",
+                              class_id == "fe8c4185-7e8d-48eb-bf0e-85562e060d5d" ~ "C-38"))
+
+ggplot(checkpoints_pulse, aes(y = response, fill = construct)) +
+  theme_minimal() +
+  geom_boxplot(outliers = F) +
+  facet_wrap(~class_id)  +
+  scale_fill_manual(values = wes_palette(name = "Darjeeling1", n = 4, type = "discrete"))
+```
+
+# code for EOC important stuff
+
+```{r}
+eoc <- checkpoints_eoc %>% filter(book == "College / Statistics and Data Science (ABC)")
+eoc <- eoc %>% filter(EOC != "")
+eoc <- eoc %>% mutate(avg_try = n_attempt/n_possible)
+
+eoc <- eoc %>%  mutate(class_id = case_when(class_id == "0089dedf-6316-4c32-a38c-d48dfafed882" ~ "C-01",
+                              class_id == "074123e7-cd90-4500-86fe-286aaa733bf5" ~ "C-02",
+                              class_id == "0d546479-6f77-4477-9c7e-365cd36c97eb" ~ "C-03",
+                              class_id == "1020418a-3eeb-4251-88f7-150c8fe00a56" ~ "C-04",
+                              class_id == "103f5ce8-9e95-4916-815e-9f821d274a59" ~ "C-05",
+                              class_id == "1cca9f91-5c4a-4e1a-8e0e-293b070dfd6f" ~ "C-06",
+                              class_id == "20bd524c-bb2d-4b74-a419-929475b91d94" ~ "C-07",
+                              class_id == "2294d558-6f5d-41c5-8d28-7b5280970f95" ~ "C-08",
+                              class_id == "3631cec9-51d3-4237-906f-a142a715be51" ~ "C-09",
+                              class_id == "40e49bfa-f6cb-42fa-a3a4-b23592b799ec" ~ "C-10",
+                              class_id == "4a3b5b2c-ef0f-4121-96f4-fd8a42764836" ~ "C-11",
+                              class_id == "51711479-441b-4c02-aef7-517aca63a53f" ~ "C-12",
+                              class_id == "52619962-72f6-4716-9c64-1c06fe10f739" ~ "C-13",
+                              class_id == "552ede8f-6b54-426d-8d29-abdc43a668cb" ~ "C-14",
+                              class_id == "5bd961c4-659c-40a7-a685-6735189f2b65" ~ "C-15",
+                              class_id == "60e05fa5-c986-4973-9833-16238720b727" ~ "C-16",
+                              class_id == "65246c1e-a176-4760-acb5-a320a9b7b2fe" ~ "C-17",
+                              class_id == "686478e7-82ac-4e6c-a3ec-2da0076ef868" ~ "C-18",
+                              class_id == "79662249-02f6-48d8-aa99-1e1c0aeea77d" ~ "C-19",
+                              class_id == "7a987176-7e55-45b5-a715-7f56c59d5f49" ~ "C-20",
+                              class_id == "822d72d9-0c18-47a0-99fc-7223b4fd22f5" ~ "C-21",
+                              class_id == "8589cd83-192c-44c8-b649-cd848e519530" ~ "C-22",
+                              class_id == "94da41a4-f9f8-4225-bf41-42db737850b9" ~ "C-23",
+                              class_id == "97c61e74-5a20-4cf5-bf67-8f8db750d0e7" ~ "C-24",
+                              class_id == "98119d92-8cc6-416a-972c-630351726223" ~ "C-25",
+                              class_id == "9bdf8bfc-9998-4fd8-85d2-70c91cf94891" ~ "C-26",
+                              class_id == "9fad0c9e-9d3d-4eed-ada6-3959bd6d712c" ~ "C-27",
+                              class_id == "afcb6b4e-a0c0-46ce-b38c-c96329c91471" ~ "C-28",
+                              class_id == "b1421b49-4026-4c61-9786-d4ef110c8db3" ~ "C-29",
+                              class_id == "b16b895d-ca1d-4330-a36d-c43fb33436e5" ~ "C-30",
+                              class_id == "bc650f4f-11f0-439a-a90a-47726724c811" ~ "C-31",
+                              class_id == "bcae937d-c95f-436c-ac0f-d4a5e995de19" ~ "C-32",
+                              class_id == "c09145c1-d635-41ae-b881-17ab46895fe4" ~ "C-33",
+                              class_id == "c1168ee3-7ac8-4fdc-af0e-e375ad0629fe" ~ "C-34",
+                              class_id == "c7008a64-b43c-4eb4-bebf-07b08b9894ad" ~ "C-35",
+                              class_id == "cc1ffb2e-5555-4109-8ad8-2d49cb54ad10" ~ "C-36",
+                              class_id == "d0b4f5e2-6d8f-4828-91cd-3f4714b821b0" ~ "C-37",
+                              class_id == "fe8c4185-7e8d-48eb-bf0e-85562e060d5d" ~ "C-38"))
+
+eoc_temp <- eoc
+eoc_temp$chapter_number <-  as.factor(eoc_temp$chapter_number)
+
+#EOC with fill by chapter_number
+ggplot(eoc_temp, aes(y = EOC, fill = chapter_number)) +
+  theme_minimal() +
+  geom_boxplot(outliers = F) +
+  facet_wrap(~class_id)  +
+  scale_fill_manual(values = wes_palette(name = "Darjeeling1", n = 13, type = "continuous"))
+```
+
+#wordcloud
+```{r}
+library(tidyverse)
+responses <- read.csv("~/Desktop/DataFest/responses.csv", comment.char="#")#View(responses_sample)
+
+pass_responses <- responses %>% 
+  mutate(points_possible = as.numeric(points_possible)) %>% 
+  mutate(points_earned = as.numeric(points_earned)) %>% 
+  filter(!is.na(points_earned)) %>% 
+  filter(!is.na(points_possible)) %>% 
+  mutate(perc_score = points_possible/points_earned) %>% 
+  filter(perc_score > .6) %>% 
+  filter(institution_id == "97aebe75-a051-4bff-a2c0-1d53eb5d9498")
+```
+
+```{r}
+#install.packages("wordcloud")
+library(wordcloud)
+
+#install.packages("RColorBrewer")
+library(RColorBrewer)
+
+#install.packages("wordcloud2")
+library(wordcloud2)
+
+#install.packages("tm")
+library(tm)
+
+#fc5f1b1b-2aeb-4e09-93fc-06fdac0d8030
+# Making DF for word clouds
+
+# Pre word cloud
+corpus = Corpus(VectorSource(pass_responses$response))
+
+corpus <- corpus %>% 
+  tm_map(removeNumbers) %>%
+  tm_map(removePunctuation) %>%
+  tm_map(stripWhitespace) %>%
+  tm_map(content_transformer(tolower)) %>%
+  tm_map(removeWords, stopwords("english")) %>%
+  tm_map(removeWords, stopwords("SMART"))
+
+tdm = TermDocumentMatrix(corpus) %>% 
+  as.matrix()
+
+words = sort(rowSums(tdm), decreasing = TRUE)
+
+pre_WCdf = data.frame(words = names(words), freq = words)
+
+
+# Color Palettes
+pre_WCcolors = c("#510C76", "#00A8E2", "#87714D")
+pre_WCbkgd = "#FFFFFF"
+post_WCcolors = c("#FFFFFF", "#510C76", "#87714D")
+post_WCbkgd = "#00A8E2"
+
+#rm unneeded vars
+rm(corpus, tdm, words)
+
+WC_Pre <- wordcloud2(pre_WCdf,
+           color = rep_len(pre_WCcolors, nrow(pre_WCdf)),
+           backgroundColor = pre_WCbkgd,
+           fontFamily = "AppleMyungjo",
+           size = .62,
+           rotateRatio = 0)
+
+#Final wordcloud
+WC_Pre
+```
