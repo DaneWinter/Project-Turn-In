@@ -1,0 +1,112 @@
+---
+title: "Presentation Graphs"
+author: "gif or gif"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(wesanderson)
+```
+
+
+```{r}
+#data
+load("data/data.Rdata")
+```
+
+### important variable graphs
+```{r}
+desired_color <- wes_palette("Darjeeling1")[1]  
+desired_color2 <- wes_palette("Darjeeling1")[5]  
+
+box_engaged_sum <- DATA %>%
+  ggplot(aes(x = success, y = engaged_sum)) +
+  labs(title = "Pass/Fail and Student Engagement",
+       x = "Pass/Fail",
+       y = "Total Engaged Minutes\nlog_scale") +
+  scale_y_continuous(trans = scales::pseudo_log_trans(base = 10)) +
+  geom_violin(aes(color = success)) +
+  geom_boxplot(width = 0.4, aes(fill = success), outliers = F) +
+  scale_fill_manual(values = c(desired_color, desired_color2)) +  
+  coord_flip() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "top")
+box_engaged_sum
+```
+
+### important variable graphs
+```{r}
+desired_color <- wes_palette("Darjeeling1")[1]  
+desired_color2 <- wes_palette("Darjeeling1")[5]  
+
+box_avg_attempt <- DATA %>%
+  ggplot(aes(x = success, y = avg_attempt^-10)) +
+  labs(title = "Pass/Fail and Student Avg_Attempt",
+       x = "Pass/Fail",
+       y = "Average Engagment (Minutes)\nlog_scale") +
+  #scale_y_continuous(trans = scales::pseudo_log_trans(base = exp(10))) +
+  geom_violin(aes(color = success)) +
+  geom_boxplot(width = 0.4, aes(fill = success), outliers = F) +
+  scale_fill_manual(values = c(desired_color, desired_color2)) +  
+  coord_flip() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "top")
+box_avg_attempt
+```
+
+### institutions
+```{r}
+StackbarsInst <- DATA %>%
+  ggplot(aes(x = institution_id, fill = fct_rev(success))) +
+  geom_bar(position = "fill",
+           colour = "black",
+           size = 0.35) +
+  coord_flip() +
+  labs(title = "Institutions and Pass/Fail Proportions",
+       x = "Institution",
+       y = "",
+       fill = "Pass/Fail") + 
+  scale_fill_manual(values = c(desired_color2, desired_color)) +  
+  geom_hline(yintercept = 0.5, linetype="dotted", size = 1) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "top")
+StackbarsInst
+```
+
+### book versions
+```{r}
+StackbarsVer <- DATA %>%
+  ggplot(aes(x = release, fill = fct_rev(success))) +
+  geom_bar(position = "fill",
+           colour = "black",
+           size = 0.35) +
+  coord_flip() +
+  labs(title = "Book Version and Pass/Fail Proportions",
+       x = "Book Version",
+       y = "",
+       fill = "Pass/Fail") + 
+  scale_fill_manual(values = c(desired_color2, desired_color)) +  
+  geom_hline(yintercept = 0.5, linetype="dotted", size = 1) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "top")
+StackbarsVer
+```
+
+### hist of avg_attempt
+```{r}
+avg_attempt_hist <- DATA %>%
+  ggplot(aes(x = (avg_attempt), y = EOC, color = success)) +
+  geom_jitter() +
+  scale_x_continuous(trans = scales::pseudo_log_trans(base = 10)) +
+  labs(title = "Average Number of Attempts per Question by EOC",
+       x = "Average Number of Attempts per Question",
+       color = "Pass/Fail") +
+  geom_vline(xintercept = 3) +
+  scale_color_manual(values = c(desired_color, desired_color2)) +  
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "top")
+avg_attempt_hist
+```
+
